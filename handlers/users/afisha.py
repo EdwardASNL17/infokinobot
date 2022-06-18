@@ -1,23 +1,23 @@
 from datetime import date
 from typing import List
 
-from aiogram.utils.markdown import hlink
+import requests
 from aiogram import types
-from aiogram.dispatcher import FSMContext
 from aiogram.types import CallbackQuery
+from aiogram.utils.markdown import hlink
+from bs4 import BeautifulSoup
 from sqlalchemy import and_
 
-from keyboards.default.menu import CITY, AFISHA
-from keyboards.inline.afisha import afisha_keyboard, pushkard_keyboard, afisha_movie_keyboard, coming_soon_keyboard
+from keyboards.default.menu import AFISHA
+from keyboards.inline.afisha import afisha_keyboard, pushkard_keyboard, afisha_movie_keyboard, coming_soon_keyboard, \
+    timetable_keyboard
 from keyboards.inline.callback_data import get_release_calendar_callback, check_pushkard_afisha_callback, \
     get_afisha_movie_callback, add_favorite_movie_callback, timetable_movie_callback, \
     change_notification_callback, check_reviews_callback
 from loader import dp
-from utils.afisha.afisha_parser import parsing_afisha
+from utils.afisha.afisha_parser import parsing_afisha, parsing_movie
 from utils.afisha.release_calendar_parser import parsing_releases
 from utils.db_api.database import User, UserFavorite, Movie, UserNotification, MovieReview
-from bs4 import BeautifulSoup
-import requests
 
 today = date.today()
 cities = {"Москва": "msk", "Санкт-Петербург": "spb", "Таганрог": "taganrog", "Казань": "kazan",
@@ -39,13 +39,8 @@ async def get_afisha(message: types.Message):
     text = f"Афиша на {today.strftime('%d.%m.%y')}🎥\n\n"
     if movies:
         for movie in movies:
-            text += f"{hlink(movie['name'], movie['link'])}\n"
-
+            text += f"<a href='{movie['link']}'>{movie['name']}</a>\n"
         await message.answer(text, reply_markup=afisha_keyboard(movies))
-        for movie in movies:
-            await Movie.get_or_create(id=movie['id'], name=movie['name'], year=movie["year"], header=movie["header"],
-                                      synopsis=movie['synopsis'], country=movie['country'], director=movie['director'],
-                                      duration=movie['duration'], age_rating=movie['age_rating'], url=movie['link'])
     else:
         text = "На сегодня нет фильмов в вашем городе\n\n"
         await message.answer(text)
@@ -54,10 +49,17 @@ async def get_afisha(message: types.Message):
 @dp.callback_query_handler(get_afisha_movie_callback.filter(), state='*')
 async def bot_afisha_movie_callback(call: CallbackQuery, callback_data: dict):
     movie = await Movie.query.where(Movie.id == int(callback_data["movie_id"])).gino.first()
+    if not movie:
+        movie_data = await parsing_movie(movie_id=callback_data["movie_id"])
+        movie = await Movie.create(id=movie_data['id'], name=movie_data['name'], year=movie_data["year"],
+                                   header=movie_data["header"], synopsis=movie_data['synopsis'],
+                                   country=movie_data['country'], director=movie_data['director'],
+                                   duration=movie_data['duration'], age_rating=movie_data['age_rating'],
+                                   url=movie_data['link'])
     favorite = await UserFavorite.query.where(and_(UserFavorite.movie_id == int(callback_data["movie_id"]),
                                                    UserFavorite.user_id == call.from_user.id)).gino.first()
     movie_text = f"{movie.name} ({movie.year})"
-    await call.message.answer(
+    await call.message.edit_text(
         "\n".join(
             [
                 f"<b>{hlink(movie_text, movie.url)}</b>\nРежиссер: {movie.director}\n",
@@ -71,7 +73,7 @@ async def bot_afisha_movie_callback(call: CallbackQuery, callback_data: dict):
 async def add_favourite_movie_callback(call: CallbackQuery, callback_data: dict):
     movie = await Movie.query.where(Movie.id == int(callback_data["movie_id"])).gino.first()
     await UserFavorite.get_or_create(user_id=call.from_user.id, movie_id=movie.id)
-    await call.message.answer(f"Фильм {movie.name} был успешно добавлен в избранное")
+    await call.answer(f"Фильм {movie.name} был успешно добавлен в избранное")
 
 
 @dp.callback_query_handler(check_reviews_callback.filter(), state='*')
@@ -99,7 +101,6 @@ async def bot_release_calendar_callback(call: CallbackQuery, callback_data: dict
     for movie in movies:
         text += f"{hlink(movie['name'], movie['link'])}\n"
     await call.message.answer(text, reply_markup=coming_soon_keyboard(movies, notification))
-
     for movie in movies:
         await Movie.get_or_create(id=movie['id'], name=movie['name'], year=movie["year"], synopsis=movie['synopsis'],
                                   url=movie['link'])
@@ -207,6 +208,6 @@ async def bot_timetable_callback(call: CallbackQuery, callback_data: dict):
                     else:
                         seance['price'] = "Билеты продаются в кассе или на сайте кинотеатра"
                         text += f"{seance['time']} {seance['price']}\n"
-        await call.message.answer(text)
+        await call.message.edit_text(text, reply_markup=timetable_keyboard(movie_id=movie.id))
     else:
-        await call.message.answer("В данный момент сеансов на фильм нет")
+        await call.answer("В данный момент сеансов на фильм нет")

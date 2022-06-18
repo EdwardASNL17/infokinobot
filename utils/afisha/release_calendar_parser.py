@@ -1,5 +1,4 @@
 import requests
-from aiogram.utils.markdown import hlink
 from bs4 import BeautifulSoup
 
 

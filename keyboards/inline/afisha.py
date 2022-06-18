@@ -1,7 +1,7 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from keyboards.inline.callback_data import get_release_calendar_callback, check_pushkard_afisha_callback, \
-    get_afisha_movie_callback, add_favorite_movie_callback, get_soon_movie_callback, timetable_movie_callback, \
+    get_afisha_movie_callback, add_favorite_movie_callback, timetable_movie_callback, \
     delete_favourite_movie_callback, change_notification_callback, check_reviews_callback
 
 
@@ -55,7 +55,7 @@ def afisha_movie_keyboard(movie, favorite):
         keyboard.add(
             InlineKeyboardButton(text="Добавить фильм в избранные 💞",
                                  callback_data=add_favorite_movie_callback.new(movie_id=movie.id))
-        ),
+        )
     keyboard.add(
         InlineKeyboardButton(text="Просмотреть отзывы 📃", callback_data=check_reviews_callback.new(movie_id=movie.id))
     )
@@ -72,4 +72,12 @@ def pushkard_keyboard(movies):
     keyboard.add(
         InlineKeyboardButton(text="Оформить Пушкинскую Карту💳", url="https://www.culture.ru/pushkinskaya-karta")
     ),
+    return keyboard
+
+
+def timetable_keyboard(movie_id):
+    keyboard = InlineKeyboardMarkup()
+    keyboard.add(
+        InlineKeyboardButton(text="🔙", callback_data=get_afisha_movie_callback.new(movie_id=movie_id))
+    )
     return keyboard

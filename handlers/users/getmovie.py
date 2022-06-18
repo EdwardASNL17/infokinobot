@@ -2,7 +2,7 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import CallbackQuery
 from aiogram.utils.markdown import hlink
-from sqlalchemy import and_
+from sqlalchemy import and_, func
 
 from keyboards.default.menu import MOVIE
 from keyboards.inline.afisha import afisha_movie_keyboard
@@ -24,18 +24,18 @@ async def get_movie(message: types.Message):
 async def give_movie(message: types.Message, state: FSMContext):
     await state.update_data(movie=message.text)
     await state.reset_state(with_data=True)
-    movie = await Movie.query.where(Movie.name == message.text).gino.first()
-    if movie:
-        favorite = await UserFavorite.query.where(and_(UserFavorite.movie_id == int(movie.id),
-                                                       UserFavorite.user_id == message.from_user.id)).gino.first()
-        movie_text = f"{movie.name} ({movie.year})"
-        await message.answer(
-            "\n".join(
-                [
-                    f"<b>{hlink(movie_text, movie.url)}</b>\n",
-                    f"{movie.synopsis}"
-                ]
-            ), reply_markup=afisha_movie_keyboard(movie, favorite)
-        )
+    movies = await Movie.query.where(Movie.name.like(func.lower(f'%{message.text}%')).lower()).gino.all()
+    if movies:
+        for movie in movies:
+            favorite = await UserFavorite.query.where(and_(UserFavorite.movie_id == int(movie.id),
+                                                           UserFavorite.user_id == message.from_user.id)).gino.first()
+            await message.answer(
+                "\n".join(
+                    [
+                        f"<b>{hlink(f'{movie.name} ({movie.year})', movie.url)}</b>\n",
+                        f"{movie.synopsis}"
+                    ]
+                ), reply_markup=afisha_movie_keyboard(movie, favorite)
+            )
     else:
         await message.answer(f"Фильма {message.text} нет в базе данных")
