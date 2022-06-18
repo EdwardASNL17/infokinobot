@@ -2,7 +2,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from keyboards.inline.callback_data import get_release_calendar_callback, check_pushkard_afisha_callback, \
     get_afisha_movie_callback, add_favorite_movie_callback, get_soon_movie_callback, timetable_movie_callback, \
-    delete_favourite_movie_callback, change_notification_callback
+    delete_favourite_movie_callback, change_notification_callback, check_reviews_callback
 
 
 def afisha_keyboard(afisha_movies):
@@ -29,9 +29,11 @@ def coming_soon_keyboard(soon_movies, notification):
                                  callback_data=get_afisha_movie_callback.new(movie_id=soon_movie['id'])),
         )
     if notification:
-        keyboard.add(InlineKeyboardButton(text="Отключить уведомления 🔕", callback_data=change_notification_callback.new()))
+        keyboard.add(
+            InlineKeyboardButton(text="Отключить уведомления 🔕", callback_data=change_notification_callback.new()))
     else:
-        keyboard.add(InlineKeyboardButton(text="Включить уведомления 🔔", callback_data=change_notification_callback.new()))
+        keyboard.add(
+            InlineKeyboardButton(text="Включить уведомления 🔔", callback_data=change_notification_callback.new()))
     return keyboard
 
 
@@ -54,6 +56,9 @@ def afisha_movie_keyboard(movie, favorite):
             InlineKeyboardButton(text="Добавить фильм в избранные 💞",
                                  callback_data=add_favorite_movie_callback.new(movie_id=movie.id))
         ),
+    keyboard.add(
+        InlineKeyboardButton(text="Просмотреть отзывы 📃", callback_data=check_reviews_callback.new(movie_id=movie.id))
+    )
     return keyboard
 
 

@@ -11,15 +11,22 @@ from keyboards.default.menu import CITY, AFISHA
 from keyboards.inline.afisha import afisha_keyboard, pushkard_keyboard, afisha_movie_keyboard, coming_soon_keyboard
 from keyboards.inline.callback_data import get_release_calendar_callback, check_pushkard_afisha_callback, \
     get_afisha_movie_callback, add_favorite_movie_callback, timetable_movie_callback, \
-    change_notification_callback
+    change_notification_callback, check_reviews_callback
 from loader import dp
 from utils.afisha.afisha_parser import parsing_afisha
 from utils.afisha.release_calendar_parser import parsing_releases
-from utils.db_api.database import User, UserFavorite, Movie, UserNotification
+from utils.db_api.database import User, UserFavorite, Movie, UserNotification, MovieReview
 from bs4 import BeautifulSoup
 import requests
 
 today = date.today()
+cities = {"Москва": "msk", "Санкт-Петербург": "spb", "Таганрог": "taganrog", "Казань": "kazan",
+          "Калининград": "kaliningrad", "Ростов-на-Дону": "rostov-na-donu", "Абакан": "abakan",
+          "Альметьевск": "almetyevsk", "Ангарск": "angarsk", "Арзамас": "arzamas", "Армавир": "armavir",
+          "Архангельск": "arkhangelsk", "Астрахань": "astrakhan", "Набережные Челны": "naberezhnie_chelni",
+          "Нальчик": "nalchik", "Наро-Фоминск": "naro_fominsk", "Нижневартовск": "nizhnevartovsk",
+          "Нижнекамск": "nizhnekamsk", "Нижний Новгород": "nnovgorod", "Нижний Тагил": "nizhny_tagil",
+          "Новокузнецк": "novokuznetsk", "Новосибирск": "novosibirsk"}
 
 
 @dp.message_handler(commands=['afisha'], state='*')
@@ -27,20 +34,21 @@ today = date.today()
 async def get_afisha(message: types.Message):
     user = await User.query.where(User.id == message.from_user.id).gino.first()
 
-    cities = {"Москва": "msk", "Санкт-Петербург": "spb", "Таганрог": "taganrog", "Казань": "kazan",
-              "Калининград": "kaliningrad", "Ростов-на-Дону": "rostov-na-donu"}
-
     url = f"https://www.afisha.ru/{cities[user.city]}/schedule_cinema/na-segodnya/"
     movies = await parsing_afisha(url)
     text = f"Афиша на {today.strftime('%d.%m.%y')}🎥\n\n"
-    for movie in movies:
-        text += f"{hlink(movie['name'], movie['link'])}\n"
+    if movies:
+        for movie in movies:
+            text += f"{hlink(movie['name'], movie['link'])}\n"
 
-    await message.answer(text, reply_markup=afisha_keyboard(movies))
-    for movie in movies:
-        await Movie.get_or_create(id=movie['id'], name=movie['name'], year=movie["year"], header=movie["header"],
-                                  synopsis=movie['synopsis'], country=movie['country'], director=movie['director'],
-                                  duration=movie['duration'], age_rating=movie['age_rating'], url=movie['link'])
+        await message.answer(text, reply_markup=afisha_keyboard(movies))
+        for movie in movies:
+            await Movie.get_or_create(id=movie['id'], name=movie['name'], year=movie["year"], header=movie["header"],
+                                      synopsis=movie['synopsis'], country=movie['country'], director=movie['director'],
+                                      duration=movie['duration'], age_rating=movie['age_rating'], url=movie['link'])
+    else:
+        text = "На сегодня нет фильмов в вашем городе\n\n"
+        await message.answer(text)
 
 
 @dp.callback_query_handler(get_afisha_movie_callback.filter(), state='*')
@@ -64,6 +72,19 @@ async def add_favourite_movie_callback(call: CallbackQuery, callback_data: dict)
     movie = await Movie.query.where(Movie.id == int(callback_data["movie_id"])).gino.first()
     await UserFavorite.get_or_create(user_id=call.from_user.id, movie_id=movie.id)
     await call.message.answer(f"Фильм {movie.name} был успешно добавлен в избранное")
+
+
+@dp.callback_query_handler(check_reviews_callback.filter(), state='*')
+async def check_reviews_callback(call: CallbackQuery, callback_data: dict):
+    reviews: List[MovieReview] = await MovieReview.join(Movie).join(User).select().where(
+        MovieReview.movie_id == int(callback_data["movie_id"])).gino.all()
+
+    if reviews:
+        text = "Тест работает"
+        await call.message.answer(text)
+    else:
+        text = "На данный фильм нет отзывов"
+        await call.message.answer(text)
 
 
 @dp.callback_query_handler(get_release_calendar_callback.filter(), state='*')
@@ -98,8 +119,6 @@ async def bot_change_notification_callback(call: CallbackQuery, callback_data: d
 @dp.callback_query_handler(check_pushkard_afisha_callback.filter(), state='*')
 async def bot_pushkard_callback(call: CallbackQuery, callback_data: dict):
     user = await User.query.where(User.id == call.from_user.id).gino.first()
-    cities = {"Москва": "msk", "Санкт-Петербург": "spb", "Таганрог": "taganrog", "Казань": "kazan",
-              "Калининград": "kaliningrad", "Ростов-на-Дону": "rostov-na-donu"}
     url = f"https://www.afisha.ru/{cities[user.city]}/schedule_cinema/na-segodnya/pushkincard/"
     r = requests.get(url)
     soup = BeautifulSoup(r.text, 'lxml')
@@ -151,8 +170,6 @@ async def bot_pushkard_callback(call: CallbackQuery, callback_data: dict):
 async def bot_timetable_callback(call: CallbackQuery, callback_data: dict):
     user = await User.query.where(User.id == call.from_user.id).gino.first()
     movie = await Movie.query.where(Movie.id == int(callback_data['movie_id'])).gino.first()
-    cities = {"Москва": "msk", "Санкт-Петербург": "spb", "Таганрог": "taganrog", "Казань": "kazan",
-              "Калининград": "kaliningrad", "Ростов-на-Дону": "rostov-na-donu"}
     url = f"https://www.afisha.ru/{cities[user.city]}/schedule_cinema_product/{movie.id}/"
     r = requests.get(url)
     soup = BeautifulSoup(r.text, 'lxml')
