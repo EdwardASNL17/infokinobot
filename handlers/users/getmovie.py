@@ -24,7 +24,7 @@ async def get_movie(message: types.Message):
 async def give_movie(message: types.Message, state: FSMContext):
     await state.update_data(movie=message.text)
     await state.reset_state(with_data=True)
-    movies = await Movie.query.where(Movie.name.like(func.lower(f'%{message.text}%')).lower()).gino.all()
+    movies = await Movie.query.where(func.lower(Movie.name).like(func.lower(f'%{message.text}%'))).gino.all()
     if movies:
         for movie in movies:
             favorite = await UserFavorite.query.where(and_(UserFavorite.movie_id == int(movie.id),

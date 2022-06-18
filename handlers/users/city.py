@@ -1,6 +1,8 @@
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import CallbackQuery
+
+from handlers.users.afisha import cities
 from keyboards.default.menu import CITY
 from keyboards.inline.callback_data import change_city_callback
 from keyboards.inline.city import city_keyboard
@@ -34,7 +36,10 @@ async def bot_change_city_callback(call: CallbackQuery, callback_data: dict):
 
 @dp.message_handler(content_types=['text'], state=UserCityState.change)
 async def bot_city_change(message: types.Message, state: FSMContext):
-    user = await User.query.where(User.id == message.from_user.id).gino.first()
-    await state.reset_state(with_data=True)
-    await user.update(city=message.text).apply()
-    await message.answer(f"Данные успешно изменены. Твой город: {user.city}🏙")
+    if message.text in cities:
+        user = await User.query.where(User.id == message.from_user.id).gino.first()
+        await state.reset_state(with_data=True)
+        await user.update(city=message.text).apply()
+        await message.answer(f"Данные успешно изменены. Твой город: {user.city}🏙")
+    else:
+        await message.answer(f"Попробуйте другой город")

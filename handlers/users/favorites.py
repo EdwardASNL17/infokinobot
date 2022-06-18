@@ -31,7 +31,7 @@ async def bot_favorites(message: types.Message):
 async def bot_favorite_callback(call: CallbackQuery, callback_data: dict):
     movie = await Movie.query.where(Movie.id == int(callback_data["movie_id"])).gino.first()
     movie_text = f"{movie.name} ({movie.year})"
-    await call.message.answer(
+    await call.message.edit_text(
         "\n".join(
             [
                 f"<b>{hlink(movie_text, movie.url)}</b>\nРежиссер: {movie.director}\n",
@@ -46,4 +46,4 @@ async def delete_favourite_movie_callback(call: CallbackQuery, callback_data: di
     favorite = await UserFavorite.query.where(and_(UserFavorite.movie_id == int(callback_data["movie_id"]),
                                                    UserFavorite.user_id == call.from_user.id)).gino.first()
     await favorite.delete()
-    await call.message.answer("Фильм был успешно удален из избранных")
+    await call.answer("Фильм был успешно удален из избранных")

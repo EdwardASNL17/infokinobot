@@ -73,7 +73,7 @@ async def bot_afisha_movie_callback(call: CallbackQuery, callback_data: dict):
 async def add_favourite_movie_callback(call: CallbackQuery, callback_data: dict):
     movie = await Movie.query.where(Movie.id == int(callback_data["movie_id"])).gino.first()
     await UserFavorite.get_or_create(user_id=call.from_user.id, movie_id=movie.id)
-    await call.answer(f"Фильм {movie.name} был успешно добавлен в избранное")
+    await call.answer(f"Фильм {movie.name} был успешно добавлен в избранные")
 
 
 @dp.callback_query_handler(check_reviews_callback.filter(), state='*')
@@ -173,41 +173,44 @@ async def bot_timetable_callback(call: CallbackQuery, callback_data: dict):
     movie = await Movie.query.where(Movie.id == int(callback_data['movie_id'])).gino.first()
     url = f"https://www.afisha.ru/{cities[user.city]}/schedule_cinema_product/{movie.id}/"
     r = requests.get(url)
-    soup = BeautifulSoup(r.text, 'lxml')
-    if soup.find('div', class_='_3zDWC _3x7YU _2cFJG hkScZ'):
-        count_pages = len(soup.find('div', class_='_3zDWC _3x7YU _2cFJG hkScZ').find_all('button')) - 2
-        if count_pages > 2:
-            count_pages = 2
-    else:
-        count_pages = 1
-    text = f"<b>Расписание сеансов фильма {movie.name} в городе {user.city}\n</b>"
-    if soup.find('span', class_='_8FVfk'):
-        date = soup.find('span', class_='_8FVfk').text
-        month = soup.find('span', class_='_1u5fN').text.lower().split("ь")[0] + "я"
-        text += f"Ближайшая дата сеанса: {date} {month}\n\n"
-        for i in range(1, count_pages + 1):
-            url = f"https://www.afisha.ru/{cities[user.city]}/schedule_cinema_product/{movie.id}/page{i}/"
-            r = requests.get(url)
-            soup = BeautifulSoup(r.text, 'lxml')
-            cinemas = soup.findAll('div', class_='_2Pfqq _2X8EE')
-            for cinema in cinemas:
-                cinema['link'] = "https://www.afisha.ru" + cinema.find('a', class_='_3NqYW DWsHS _3lmHp wkn_c').get(
-                    'href')
-                cinema['name'] = cinema.find('h2', class_='_3Yfoo').text
-                text += f"<b>{hlink(cinema['name'], cinema['link'])}</b>\nСеансы\n"
-                seances = cinema.findAll('div', class_='_1sRLP')
-                for seance in seances:
-                    seance['time'] = seance.find('button', '_3jiFM _1Lyrw NYM3K _2oJKT _2IYn8 _1ORu2').text
-                    if seance.findAll('div', '_1dje5 _2qUBY'):
-                        if len(seance.findAll('div', '_1dje5 _2qUBY')) > 1:
-                            seance['price'] = seance.findAll('div', '_1dje5 _2qUBY')[0].text + " " + \
-                                              seance.findAll('div', '_1dje5 _2qUBY')[1].text
+    if len(r.history) == 0:
+        soup = BeautifulSoup(r.text, 'lxml')
+        if soup.find('div', class_='_3zDWC _3x7YU _2cFJG hkScZ'):
+            count_pages = len(soup.find('div', class_='_3zDWC _3x7YU _2cFJG hkScZ').find_all('button')) - 2
+            if count_pages > 2:
+                count_pages = 2
+        else:
+            count_pages = 1
+        text = f"<b>Расписание сеансов фильма {movie.name} в городе {user.city}\n</b>"
+        if soup.find('span', class_='_8FVfk'):
+            date = soup.find('span', class_='_8FVfk').text
+            month = soup.find('span', class_='_1u5fN').text.lower().split("ь")[0] + "я"
+            text += f"Ближайшая дата сеанса: {date} {month}\n\n"
+            for i in range(1, count_pages + 1):
+                url = f"https://www.afisha.ru/{cities[user.city]}/schedule_cinema_product/{movie.id}/page{i}/"
+                r = requests.get(url)
+                soup = BeautifulSoup(r.text, 'lxml')
+                cinemas = soup.findAll('div', class_='_2Pfqq _2X8EE')
+                for cinema in cinemas:
+                    cinema['link'] = "https://www.afisha.ru" + cinema.find('a', class_='_3NqYW DWsHS _3lmHp wkn_c').get(
+                        'href')
+                    cinema['name'] = cinema.find('h2', class_='_3Yfoo').text
+                    text += f"<b>{hlink(cinema['name'], cinema['link'])}</b>\nСеансы\n"
+                    seances = cinema.findAll('div', class_='_1sRLP')
+                    for seance in seances:
+                        seance['time'] = seance.find('button', '_3jiFM _1Lyrw NYM3K _2oJKT _2IYn8 _1ORu2').text
+                        if seance.findAll('div', '_1dje5 _2qUBY'):
+                            if len(seance.findAll('div', '_1dje5 _2qUBY')) > 1:
+                                seance['price'] = seance.findAll('div', '_1dje5 _2qUBY')[0].text + " " + \
+                                                  seance.findAll('div', '_1dje5 _2qUBY')[1].text
+                            else:
+                                seance['price'] = seance.find('div', '_1dje5 _2qUBY').text
+                            text += f"{seance['time']} {seance['price']}\n"
                         else:
-                            seance['price'] = seance.find('div', '_1dje5 _2qUBY').text
-                        text += f"{seance['time']} {seance['price']}\n"
-                    else:
-                        seance['price'] = "Билеты продаются в кассе или на сайте кинотеатра"
-                        text += f"{seance['time']} {seance['price']}\n"
-        await call.message.edit_text(text, reply_markup=timetable_keyboard(movie_id=movie.id))
+                            seance['price'] = "Билеты продаются в кассе или на сайте кинотеатра"
+                            text += f"{seance['time']} {seance['price']}\n"
+            await call.message.edit_text(text, reply_markup=timetable_keyboard(movie_id=movie.id))
+        else:
+            await call.answer("В данный момент сеансов на фильм нет")
     else:
-        await call.answer("В данный момент сеансов на фильм нет")
+        await call.answer(f"{movie.name} не прокатывается в вашем городе")
