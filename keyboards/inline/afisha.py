@@ -1,8 +1,9 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+from keyboards.default.menu import AFISHA
 from keyboards.inline.callback_data import get_release_calendar_callback, check_pushkard_afisha_callback, \
     get_afisha_movie_callback, add_favorite_movie_callback, timetable_movie_callback, \
-    delete_favourite_movie_callback, change_notification_callback, check_reviews_callback
+    delete_favourite_movie_callback, change_notification_callback, check_reviews_callback, get_afisha_callback
 
 
 def afisha_keyboard(afisha_movies):
@@ -37,7 +38,7 @@ def coming_soon_keyboard(soon_movies, notification):
     return keyboard
 
 
-def afisha_movie_keyboard(movie, favorite):
+def afisha_movie_keyboard(movie, favorite, back_to_afisha=False):
     keyboard = InlineKeyboardMarkup()
     keyboard.add(
         InlineKeyboardButton(text="Расписание сеансов 🎞️",
@@ -58,6 +59,9 @@ def afisha_movie_keyboard(movie, favorite):
         )
     keyboard.add(
         InlineKeyboardButton(text="Просмотреть отзывы 📃", callback_data=check_reviews_callback.new(movie_id=movie.id))
+    )
+    keyboard.add(
+        InlineKeyboardButton(text=AFISHA, callback_data=get_afisha_callback.new())
     )
     return keyboard
 

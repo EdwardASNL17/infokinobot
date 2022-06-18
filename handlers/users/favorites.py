@@ -6,6 +6,7 @@ from aiogram.utils.markdown import hlink
 from sqlalchemy import and_
 
 import data
+from handlers.users.afisha import bot_afisha_movie_callback
 from keyboards.default.menu import FAVORITES
 from keyboards.inline.callback_data import favorite_movie_callback, delete_favourite_movie_callback
 from keyboards.inline.favorites import favorites_keyboard, favourite_movie_keyboard
@@ -45,5 +46,7 @@ async def bot_favorite_callback(call: CallbackQuery, callback_data: dict):
 async def delete_favourite_movie_callback(call: CallbackQuery, callback_data: dict):
     favorite = await UserFavorite.query.where(and_(UserFavorite.movie_id == int(callback_data["movie_id"]),
                                                    UserFavorite.user_id == call.from_user.id)).gino.first()
-    await favorite.delete()
-    await call.answer("Фильм был успешно удален из избранных")
+    if favorite:
+        await favorite.delete()
+        await call.answer("Фильм был успешно удален из избранных")
+        await bot_afisha_movie_callback(call, callback_data)
