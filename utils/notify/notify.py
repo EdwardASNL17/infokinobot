@@ -14,7 +14,7 @@ async def notify_users(time_between_notification_updates: int = TIME_BETWEEN_NOT
     while True:
         today = datetime.now(tz=tz).date()
         today.weekday()
-        if today.weekday() == 6:
+        if today.weekday() == 0:
             movies = await notify_parser()
 
             text = f"Сегодня в прокат вышли следующие фильмы:\n\n"
