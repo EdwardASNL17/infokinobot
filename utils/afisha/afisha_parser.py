@@ -16,6 +16,20 @@ async def parsing_afisha(url):
     return movies
 
 
+async def parsing_pushkard(url):
+    r = requests.get(url)
+    soup = BeautifulSoup(r.text, 'lxml')
+    parsed_movies = soup.findAll('div', class_='_1kwbj lkWIA _2Ds3f')
+    movies = [
+        {
+            "id": parsed_movie.find('a', class_='_3NqYW DWsHS _3lmHp wkn_c').get('href').split("/")[-3],
+            "link": "afisha.ru" + parsed_movie.find('a', class_='_3NqYW DWsHS _3lmHp wkn_c').get('href'),
+            "name": parsed_movie.find('a', class_='_3NqYW DWsHS _3lmHp wkn_c').find('h2', class_='_3Yfoo').text
+        } for parsed_movie in parsed_movies
+    ]
+    return movies
+
+
 async def parsing_movie(movie_id):
     movie = {'link': f"https://www.afisha.ru/movie/{movie_id}", 'id': int(movie_id)}
 
