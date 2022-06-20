@@ -4,15 +4,18 @@ from bs4 import BeautifulSoup
 
 async def parsing_afisha(url):
     r = requests.get(url)
-    soup = BeautifulSoup(r.text, 'lxml')
-    parsed_movies = soup.findAll('div', class_='_1kwbj lkWIA _2Ds3f')
-    movies = [
-        {
-            "id": parsed_movie.find('a', class_='_3NqYW DWsHS _3lmHp wkn_c').get('href').split("/")[-3],
-            "link": "afisha.ru" + parsed_movie.find('a', class_='_3NqYW DWsHS _3lmHp wkn_c').get('href'),
-            "name": parsed_movie.find('a', class_='_3NqYW DWsHS _3lmHp wkn_c').find('h2', class_='_3Yfoo').text
-        } for parsed_movie in parsed_movies
-    ]
+    if len(r.history) == 0:
+        soup = BeautifulSoup(r.text, 'lxml')
+        parsed_movies = soup.findAll('div', class_='_1kwbj lkWIA _2Ds3f')
+        movies = [
+            {
+                "id": parsed_movie.find('a', class_='_3NqYW DWsHS _3lmHp wkn_c').get('href').split("/")[-3],
+                "link": "afisha.ru" + parsed_movie.find('a', class_='_3NqYW DWsHS _3lmHp wkn_c').get('href'),
+                "name": parsed_movie.find('a', class_='_3NqYW DWsHS _3lmHp wkn_c').find('h2', class_='_3Yfoo').text
+            } for parsed_movie in parsed_movies
+        ]
+    else:
+        movies = []
     return movies
 
 
@@ -34,6 +37,7 @@ async def parsing_movie(movie_id):
     movie = {'link': f"https://www.afisha.ru/movie/{movie_id}", 'id': int(movie_id)}
 
     req = requests.get(movie['link'])
+
     soup = BeautifulSoup(req.text, 'lxml')
 
     movie['name'] = soup.find('h1', class_='KOq_N').findAll('span')[-1].text

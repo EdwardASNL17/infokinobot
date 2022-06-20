@@ -23,7 +23,10 @@ cities = {"Москва": "msk", "Санкт-Петербург": "spb", "Таг
           "Архангельск": "arkhangelsk", "Астрахань": "astrakhan", "Набережные Челны": "naberezhnie_chelni",
           "Нальчик": "nalchik", "Наро-Фоминск": "naro_fominsk", "Нижневартовск": "nizhnevartovsk",
           "Нижнекамск": "nizhnekamsk", "Нижний Новгород": "nnovgorod", "Нижний Тагил": "nizhny_tagil",
-          "Новокузнецк": "novokuznetsk", "Новосибирск": "novosibirsk"}
+          "Новокузнецк": "novokuznetsk", "Новосибирск": "novosibirsk", "Новороссийск": "novorossijsk",
+          "Ногинск": "noginsk", "Владивосток": "vladivostok", "Балашиха": "balashiha", "Белгород": "belgorod",
+          "Брянск": "bryansk", "Владимир": "vladimir", "Волгоград": "volgograd", "Омск": "omsk", "Оренбург": "orenburg",
+          "Воронеж": "voronezh", "Пятигорск": "pyatigorsk", "Грозный": "groznij"}
 
 
 @dp.message_handler(commands=['afisha'], state='*')
@@ -32,9 +35,8 @@ async def get_afisha(message: types.Message):
     user = await User.query.where(User.id == message.from_user.id).gino.first()
     url = f"https://www.afisha.ru/{cities[user.city]}/schedule_cinema/na-segodnya/"
     movies = await parsing_afisha(url)
-    text = f"Афиша на {today.strftime('%d.%m.%y')}🎥\n\n"
-
     if movies:
+        text = f"Афиша на {today.strftime('%d.%m.%y')}🎥\n\n"
         for movie in movies:
             text += f"<a href='{movie['link']}'>{movie['name']}</a>\n"
         await message.answer(text, reply_markup=afisha_keyboard(movies))
@@ -147,7 +149,7 @@ async def bot_timetable_callback(call: CallbackQuery, callback_data: dict):
         if soup.find('div', class_='_3zDWC _3x7YU _2cFJG hkScZ'):
             count_pages = len(soup.find('div', class_='_3zDWC _3x7YU _2cFJG hkScZ').find_all('button')) - 2
             if count_pages > 2:
-                count_pages = 2
+                count_pages = 1
         else:
             count_pages = 1
         text = f"<b>Расписание сеансов фильма {movie.name} в городе {user.city}\n</b>"

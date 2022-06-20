@@ -40,6 +40,6 @@ async def bot_city_change(message: types.Message, state: FSMContext):
         user = await User.query.where(User.id == message.from_user.id).gino.first()
         await state.reset_state(with_data=True)
         await user.update(city=message.text).apply()
-        await message.answer(f"Данные успешно изменены. Твой город: {user.city}🏙")
+        await message.answer(f"Данные успешно изменены.\nТвой город: {user.city}")
     else:
         await message.answer(f"Попробуйте другой город")
